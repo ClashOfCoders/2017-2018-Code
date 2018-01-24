@@ -26,6 +26,8 @@ import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
+import static java.lang.Runtime.getRuntime;
+
 /**
  * This is NOT an opmode.
  *
@@ -57,20 +59,21 @@ public class HardwareRelic
     public Servo   CubeClawLeft=null;
     public Servo   CubeClawRight=null;
     public Servo   CubeLiftArm=null;
+    public Servo   CubeSecondClaw=null;
 
     public TouchSensor CubeSlideSwitchR = null;
     public TouchSensor CubeSlideSwitchL = null;
     public TouchSensor CubeLiftSwitch = null;
+    ModernRoboticsI2cRangeSensor rangeSensor;
 
 
-    public Servo extender = null;
-    public CRServo relicClawLifter = null;
-
-
+    // public CRServo relicClawLifter = null;
+    public DcMotor RelicLifter=null;
     public Servo RelClaw = null;
-    public Servo RelicExtender = null;
+    public CRServo RelicExtender = null;
+    public TouchSensor RelicSwitch = null;
 
-    public Servo GemExtender = null;
+    public CRServo GemExtender = null;
     public Servo GemRotater =null;
 
     public ColorSensor sensorRGB;
@@ -82,15 +85,26 @@ public class HardwareRelic
     static final long    CYCLE_MS    =   10;     // period of each cycle
     static final double MAX_FWD     =  1.0;     // Maximum FWD power applied to motor
     static final double MAX_REV     = -1.0;     // Maximum REV power applied to motor
-    double  power   = 0;
-    boolean rampUp  = true;
 
-    public double GemExtenderInitialPosition = 1;
-    public double GemExtenderMiddlePosition = 0.6;
-    public double GemExtenderLastPosition = 0.3;
-    public double GemRotatorInitialPosition = 0.9;
+    public static final double COUNTS_PER_MOTOR_REV = 1120;    // eg: TETRIX Motor Encoder
+    public static final double DRIVE_GEAR_REDUCTION = 1;     // This is < 1.0 if geared UP
+    public static final double WHEEL_DIAMETER_INCHES = 4.0;     // For figuring circumference
+    public static final double COUNTS_PER_INCH = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
+            (WHEEL_DIAMETER_INCHES * 3.1415*Math.sqrt(2)/2);
+
+
+    public double GemExtenderInitialPosition = -0.1;
+    public double GemExtenderMiddlePosition = 0.45;
+    public double GemExtenderLastPosition = 0.7;
+    public double GemRotatorInitialPosition = 1;
     public double GemRotatorMidPosition = 0.5;
     public double GemRotatorLastPosition = 0;
+
+    public double CubeLiftArmDownPosition=0.1;
+    public double CubeLiftArmUpPosition=1;
+
+    public double cubeSecondOpenPos=0.5;
+    public double cubeSecondClosePos=0.4;
 
     HardwareMap hwMap           =  null;
     private ElapsedTime period  = new ElapsedTime();
@@ -140,46 +154,66 @@ public class HardwareRelic
 
         CubeClawLeft=hwMap.get(Servo.class, "CubeClawLeft");
         CubeClawRight=hwMap.get(Servo.class,"CubeClawRight");
-        CubeClawLeft.setPosition(0.4);
-        CubeClawRight.setPosition(0.6);
+        CubeClawLeft.setPosition(0);
+        CubeClawRight.setPosition(1);
 
 
         CubeLiftArm=hwMap.get(Servo.class,"CubeLiftArm");
-        CubeLiftArm.setPosition(0.8);
+        CubeLiftArm.setPosition(CubeLiftArmDownPosition);
+
 
         CubeSlideSwitchL = hwMap.get(TouchSensor.class,"CubeSlideSwitchL");
         CubeSlideSwitchR = hwMap.get(TouchSensor.class,"CubeSlideSwitchR");
         CubeLiftSwitch = hwMap.get(TouchSensor.class,"CubeLiftSwitch");
+        CubeSecondClaw = hwMap.get(Servo.class, "CubeSecondClaw");
+
+        rangeSensor = hwMap.get(ModernRoboticsI2cRangeSensor.class, "sensor_range");
+
+
+
+        CubeSecondClaw.setPosition(cubeSecondClosePos);
 
 
 
 
 
         RelClaw= hwMap.get(Servo.class, "RelClaw");
-        relicClawLifter = hwMap.crservo.get("relicClawLifter");
+        RelicExtender = hwMap.crservo.get("RelicExtender");
+        //RelicExtender = hwMap.get(Servo.class, "RelicExtender");
+        //relicClawLifter = hwMap.crservo.get("relicClawLifter");
+        RelicLifter=hwMap.get(DcMotor.class,"RelicLifter");
+        RelicSwitch = hwMap.get(TouchSensor.class,"RelicSwitch");
+
+        RelicLifter.setDirection(DcMotor.Direction.FORWARD);//
+        RelicLifter.setPower(0);
+        RelicLifter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
 
-        relicClawLifter.setPower(0);
+        //relicClawLifter.setPower(0.75);
         RelClaw.setPosition(0.0);
+        RelicExtender.setPower(0);
+        RelicExtender.setDirection(DcMotorSimple.Direction.FORWARD);
 
-        GemExtender= hwMap.get(Servo.class, "GemExtender");
+        GemExtender= hwMap.get(CRServo.class, "GemExtender");
         GemRotater = hwMap.get(Servo.class, "GemRotater");
         cdim = hwMap.deviceInterfaceModule.get("cdim");
         sensorRGB = hwMap.colorSensor.get("sensorRGB");
         gyro = (ModernRoboticsI2cGyro)hwMap.gyroSensor.get("gyro");
 
-        RelicExtender = hwMap.get(Servo.class, "RelicExtender");
-        RelicExtender.setPosition(0.52);
 
-        boolean bLedOn = false;
-        cdim.setDigitalChannelMode(LED_CHANNEL, DigitalChannel.Mode.OUTPUT);
-        cdim.setDigitalChannelState(LED_CHANNEL, bLedOn);
+
+
+
+
+
 
         GemRotater.setPosition(GemRotatorInitialPosition);
-        GemExtender.setPosition(GemExtenderInitialPosition);
+        GemExtender.setPower(GemExtenderInitialPosition);
 
-
-
+        boolean bLedOn = true;
+        cdim.setDigitalChannelMode(LED_CHANNEL, DigitalChannel.Mode.OUTPUT);
+        // turn the LED on in the beginning, just so user will know that the sensor is active.
+        cdim.setDigitalChannelState(LED_CHANNEL, bLedOn);
 
         //stopRobot();
 
@@ -219,7 +253,16 @@ public class HardwareRelic
         CubeLift1.setPower(0);
         CubeLift2.setPower(0);
         CubeTimeBelt.setPower(0);
-        relicClawLifter.setPower(0);
+
+        RelicExtender.setPower(0);
+        //       CubeLiftArm.setPosition(CubeLiftArmDownPosition);
+
+
+        //       RelClaw.setPosition(0.0);
+        GemRotater.setPosition(GemRotatorInitialPosition);
+        GemExtender.setPower(GemExtenderInitialPosition);
+
+
 
     }
 
@@ -235,7 +278,7 @@ public class HardwareRelic
 
     public double gyroAngle(double gyroReading){
         double newGyro=gyroReading % 360;
-        if(newGyro>180) newGyro=newGyro-360;
+        // if(newGyro>180) newGyro=newGyro-360;
         return  newGyro;
     }
 
@@ -299,11 +342,6 @@ public class HardwareRelic
         return speedArray;
     }
 
-    public double gyroCorrection(double rotation){
-        double gyroRotation = rotation+ 0.1*(rotation-0.001*gyro.getIntegratedZValue());
-        gyroRotation=Range.clip(gyroRotation,-1,1);
-        return gyroRotation;
-    }
 
 
     // This program simply drives the robot forward with an specified angle
@@ -323,7 +361,7 @@ public class HardwareRelic
         v1 = speed;
         v2 = -speed;
 
-       // v1/=2;
+        // v1/=2;
         //v2/=2;
 
         //the motors are configured to go counterclockwise if the power are all set to 1
@@ -363,7 +401,7 @@ public class HardwareRelic
 
         int rampsteps= (int) (maxRamp3/INCREMENT);
         if (rampsteps<1)
-                rampsteps=1;
+            rampsteps=1;
 
 
         int iteration=0;
@@ -375,12 +413,12 @@ public class HardwareRelic
 
 
 
-        while(currentOpMode.getRuntime()<150 && iteration<rampsteps) {
+        while(currentOpMode.getRuntime()<150 && iteration<rampsteps ) {
 
-           currentPower1 += rampStep1/rampsteps;
-           currentPower2 += rampStep2/rampsteps;
-           currentPower3 += rampStep3/rampsteps;
-           currentPower4 += rampStep4/rampsteps;
+            currentPower1 += rampStep1/rampsteps;
+            currentPower2 += rampStep2/rampsteps;
+            currentPower3 += rampStep3/rampsteps;
+            currentPower4 += rampStep4/rampsteps;
 
 
             // Set the motor to the new power and pause;
@@ -402,7 +440,264 @@ public class HardwareRelic
 
     }
 
+    public void gyroDrive(LinearOpMode currentOpMode, double speed, double angle, double distance,double timeLimit,double gyroTarget){
 
+        double targetTicks = (distance) * 1120 / (4 * 3.14);
+
+
+        double pos1 = wheelOne.getCurrentPosition();
+        double pos2 = wheelTwo.getCurrentPosition();
+        double pos3 = wheelThree.getCurrentPosition();
+        double pos4 = wheelFour.getCurrentPosition();
+        double avgpos = 0;
+        double timeStart=currentOpMode.getRuntime();
+        double angleDiff=0;
+        double rotation;
+        angleDrive(currentOpMode,speed,angle,0);
+        while (currentOpMode.opModeIsActive() && avgpos <= targetTicks && (currentOpMode.getRuntime()-timeStart)<timeLimit) {
+            currentOpMode.telemetry.addData("targetTicks", targetTicks);
+            currentOpMode.telemetry.addData("avgpos", avgpos);
+            currentOpMode.telemetry.update();
+            avgpos = Math.abs(wheelOne.getCurrentPosition() - pos1) + Math.abs(wheelTwo.getCurrentPosition() - pos2) + Math.abs(wheelThree.getCurrentPosition() - pos3) + Math.abs(wheelFour.getCurrentPosition() - pos4);
+            avgpos = avgpos / 4;
+            angleDiff=gyroTarget-gyroAngle(gyro.getIntegratedZValue());
+            if (angleDiff<180) angleDiff = 360+angleDiff;
+            if (angleDiff>180) angleDiff = angleDiff-360;
+            rotation = -angleDiff / 25;
+            rotation=Range.clip(rotation,-0.2,0.2);
+
+
+            angleDrive(currentOpMode, speed, angle, rotation);
+
+            currentOpMode.telemetry.addData("Heading", gyroTarget);
+            currentOpMode.telemetry.addData("rotation", rotation);
+            currentOpMode.telemetry.addData("Encoders",wheelOne.getCurrentPosition() + "||" +wheelTwo.getCurrentPosition() + "||" + wheelThree.getCurrentPosition() + "||" +wheelFour.getCurrentPosition());
+            currentOpMode.telemetry.addData("wheelPowers",wheelOne.getPower() + "||" +wheelTwo.getPower() + "||" + wheelThree.getPower() + "||" +wheelFour.getPower());
+            currentOpMode.telemetry.addData("wheelStatus",wheelOne.isBusy() + "||" +wheelTwo.isBusy() + "||" + wheelThree.isBusy() + "||" +wheelFour.isBusy());
+
+
+            currentOpMode.idle();
+        }
+        stopRobot();
+    }
+
+
+    public void gyroTurn(LinearOpMode currentOpMode, double rotationSpeed,double targetAngle,boolean counterClock){
+
+        if( counterClock) {
+            while (currentOpMode.opModeIsActive() && (gyroAngle(gyro.getIntegratedZValue())) < targetAngle) {
+                angleDrive(currentOpMode, 0, 0, -rotationSpeed);
+                currentOpMode.telemetry.addData("robotAngle", gyroAngle(gyro.getIntegratedZValue()));
+                currentOpMode.telemetry.update();
+                currentOpMode.idle();
+            }
+        }
+        else{
+            while (currentOpMode.opModeIsActive() && (gyroAngle(gyro.getIntegratedZValue())) > targetAngle) {
+                angleDrive(currentOpMode, 0, 0, rotationSpeed);
+                currentOpMode.telemetry.addData("robotAngle", gyroAngle(gyro.getIntegratedZValue()));
+                currentOpMode.telemetry.update();
+                currentOpMode.idle();
+            }
+
+        }
+        stopRobot();
+    }
+
+    public void releaseLowerCubeArm(){
+        CubeClawRight.setPosition(0.7);
+        CubeClawLeft.setPosition(0.3);
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+
+        CubeLiftArm.setPosition(CubeLiftArmDownPosition);
+
+    }
+    public void GemGame(OpMode currentOpMode,boolean redSide){
+        GemExtender.setPower(GemExtenderLastPosition-0.2);
+        // GemRotater.setPosition(GemRotatorInitialPosition-0.1);
+
+        CubeLiftArm.setPosition(CubeLiftArmUpPosition); // lift the cube lift arm to the up position
+
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+
+        double redFirst1 = (double) sensorRGB.red();
+        double blueFirst1 = (double)sensorRGB.blue();
+
+        CubeClawRight.setPosition(0);
+        CubeClawLeft.setPosition(1);
+
+        GemExtender.setPower(GemExtenderLastPosition-0.1);
+        // CubeSecondClaw.setPosition(cubeSecondOpenPos);
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+
+        CubeSecondClaw.setPosition(cubeSecondClosePos);
+        double redFirst2 = (double)sensorRGB.red();
+        double blueFirst2 = (double)sensorRGB.blue();
+
+
+
+        GemExtender.setPower(GemExtenderMiddlePosition);
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+
+
+        GemRotater.setPosition(GemRotatorMidPosition);
+        try {
+            Thread.sleep(300);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+
+        }
+        GemExtender.setPower(GemExtenderLastPosition-0.2);
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+        double redSecond1 = (double)sensorRGB.red();
+        double blueSecond1 = (double)sensorRGB.blue();
+
+        GemExtender.setPower(GemExtenderLastPosition);
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+
+
+        double redSecond2 = (double)sensorRGB.red();
+        double blueSecond2 = (double)sensorRGB.blue();
+
+
+
+
+
+        double ratioDiffFirst=(redFirst2-redFirst1)/(blueFirst2-blueFirst1+1);
+
+        double ratioDiffSecond=(redSecond2-redSecond1)/(blueSecond2-blueSecond1+1);
+        currentOpMode.telemetry.addData("ratiosDiffFirst",(redFirst2-redFirst1)/(blueFirst2-blueFirst1+1));
+        currentOpMode.telemetry.addData("ratiosDiffSecond",(redSecond2-redSecond1)/(blueSecond2-blueSecond1+1));
+        currentOpMode.telemetry.addData("redSide",redSide);
+        currentOpMode.telemetry.update();
+
+        if(blueFirst1>redFirst1 || blueFirst2>redFirst2){
+            if(redSide)GemRotater.setPosition(GemRotatorInitialPosition-0.1);
+            else GemRotater.setPosition(GemRotatorLastPosition+0.1);
+
+        }
+        else if(blueSecond1>redSecond1 || blueSecond2>redSecond2){
+            if(redSide) GemRotater.setPosition(GemRotatorLastPosition+0.1);
+            else GemRotater.setPosition(GemRotatorInitialPosition-0.1);
+
+        }
+        // between the two readings, use the one with larger difference between blue and red
+        else if(Math.abs(ratioDiffFirst-ratioDiffSecond)>1 ){
+            if((ratioDiffFirst > ratioDiffSecond) && !(ratioDiffFirst>1 && ratioDiffSecond>1)&& !(ratioDiffFirst<0 && ratioDiffSecond<0)) {
+
+                if(redSide) GemRotater.setPosition(GemRotatorLastPosition+0.1);
+                else GemRotater.setPosition(GemRotatorInitialPosition-0.1);
+            }
+
+
+            else if(ratioDiffFirst<ratioDiffSecond){
+
+
+                if(redSide)GemRotater.setPosition(GemRotatorInitialPosition-0.1);
+                else GemRotater.setPosition(GemRotatorLastPosition+0.1);
+            }
+
+
+        }
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+
+        //GemRotater.setPosition(GemRotatorMidPosition);
+        GemExtender.setPower(GemExtenderInitialPosition);
+
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+
+        GemRotater.setPosition(GemRotatorInitialPosition);
+        cdim.setDigitalChannelMode(LED_CHANNEL, DigitalChannel.Mode.OUTPUT);
+
+
+        // turn the LED off
+        cdim.setDigitalChannelState(LED_CHANNEL, false);
+    }
+
+    public void ReleaseCube(LinearOpMode currentOpMode){
+        double timeStart;
+
+        CubeSecondClaw.setPosition(cubeSecondOpenPos);
+        CubeClawRight.setPosition(0.7);
+        CubeClawLeft.setPosition(0.3);
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+
+        timeStart=currentOpMode.getRuntime();
+
+
+        while(currentOpMode.opModeIsActive() &&(currentOpMode.getRuntime()-timeStart)<0.5) {
+            angleDrive(currentOpMode, 0.20, 180, 0);
+            currentOpMode.idle();
+
+        }
+        stopRobot();
+        try {
+            Thread.sleep(700);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+        timeStart=currentOpMode.getRuntime();
+        while(currentOpMode.opModeIsActive() &&(currentOpMode.getRuntime()-timeStart)<0.7) {
+            angleDrive(currentOpMode, 0.20, 180, 0);
+            currentOpMode.idle();
+
+        }
+        stopRobot();
+
+        timeStart=currentOpMode.getRuntime();
+
+        while(currentOpMode.opModeIsActive() &&(currentOpMode.getRuntime()-timeStart)<1.5) {
+            angleDrive(currentOpMode, 0.20, 0, 0);
+            currentOpMode.idle();
+
+        }
+        stopRobot();
+        timeStart=currentOpMode.getRuntime();
+
+        while(currentOpMode.opModeIsActive() &&(currentOpMode.getRuntime()-timeStart)<1.5) {
+            angleDrive(currentOpMode, 0.20, 180, 0);
+            currentOpMode.idle();
+
+        }
+        stopRobot();
+
+    }
     public void waitForTick(long periodMs) throws InterruptedException {
 
         long  remaining = periodMs - (long)period.milliseconds();
