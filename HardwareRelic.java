@@ -1,32 +1,48 @@
 package org.firstinspires.ftc.teamcode;
 
-import android.graphics.Path;
+/**
+ * Created by jianqiuzhang on 3/12/18.
+ */
+import android.graphics.Color;
+        import android.graphics.Path;
 
-import com.qualcomm.hardware.modernrobotics.ModernRoboticsI2cGyro;
-import com.qualcomm.hardware.modernrobotics.ModernRoboticsI2cRangeSensor;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.hardware.CRServo;
-import com.qualcomm.robotcore.hardware.ColorSensor;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.DeviceInterfaceModule;
-import com.qualcomm.robotcore.hardware.DigitalChannel;
-import com.qualcomm.robotcore.hardware.DigitalChannelController;
-import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.I2cAddr;
-import com.qualcomm.robotcore.hardware.I2cDevice;
-import com.qualcomm.robotcore.hardware.I2cDeviceSynch;
-import com.qualcomm.robotcore.hardware.I2cDeviceSynchImpl;
-import com.qualcomm.robotcore.hardware.OpticalDistanceSensor;
-import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.TouchSensor;
-import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.util.Range;
+        import com.qualcomm.hardware.modernrobotics.ModernRoboticsI2cGyro;
+        import com.qualcomm.hardware.modernrobotics.ModernRoboticsI2cRangeSensor;
+        import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+        import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+        import com.qualcomm.robotcore.hardware.CRServo;
+        import com.qualcomm.robotcore.hardware.ColorSensor;
+        import com.qualcomm.robotcore.hardware.DcMotor;
+        import com.qualcomm.robotcore.hardware.DcMotorSimple;
+        import com.qualcomm.robotcore.hardware.DeviceInterfaceModule;
+        import com.qualcomm.robotcore.hardware.DigitalChannel;
+        import com.qualcomm.robotcore.hardware.DigitalChannelController;
+        import com.qualcomm.robotcore.hardware.HardwareMap;
+        import com.qualcomm.robotcore.hardware.I2cAddr;
+        import com.qualcomm.robotcore.hardware.I2cDevice;
+        import com.qualcomm.robotcore.hardware.I2cDeviceSynch;
+        import com.qualcomm.robotcore.hardware.I2cDeviceSynchImpl;
+        import com.qualcomm.robotcore.hardware.OpticalDistanceSensor;
+        import com.qualcomm.robotcore.hardware.Servo;
+        import com.qualcomm.robotcore.hardware.TouchSensor;
+        import com.qualcomm.robotcore.util.ElapsedTime;
+        import com.qualcomm.robotcore.util.Range;
+        import com.qualcomm.hardware.kauailabs.NavxMicroNavigationSensor;
+        import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+        import com.qualcomm.robotcore.eventloop.opmode.Disabled;
+        import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;import com.qualcomm.robotcore.hardware.Gyroscope;
+        import com.qualcomm.robotcore.hardware.IntegratingGyroscope;
+        import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+        import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+        import org.firstinspires.ftc.robotcore.external.navigation.AngularVelocity;
+        import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+        import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
+        import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 
-import static java.lang.Runtime.getRuntime;
+        import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+
+        import static java.lang.Runtime.getRuntime;
 
 /**
  * This is NOT an opmode.
@@ -46,6 +62,7 @@ import static java.lang.Runtime.getRuntime;
  */
 public class HardwareRelic
 {
+
     private ElapsedTime runtime = new ElapsedTime();
 
     public DcMotor wheelOne = null;
@@ -56,6 +73,7 @@ public class HardwareRelic
     public DcMotor CubeLift1 = null;
     public DcMotor CubeLift2 = null;
     public CRServo CubeTimeBelt= null;
+    public CRServo CubeSensorServo=null;
     public Servo   CubeClawLeft=null;
     public Servo   CubeClawRight=null;
     public Servo   CubeLiftArm=null;
@@ -64,7 +82,8 @@ public class HardwareRelic
     public TouchSensor CubeSlideSwitchR = null;
     public TouchSensor CubeSlideSwitchL = null;
     public TouchSensor CubeLiftSwitch = null;
-    ModernRoboticsI2cRangeSensor rangeSensor;
+    public ColorSensor sensor_color;
+    ////ModernRoboticsI2cRangeSensor rangeSensor;
 
 
     // public CRServo relicClawLifter = null;
@@ -80,8 +99,10 @@ public class HardwareRelic
     public DeviceInterfaceModule cdim;
     public static final int LED_CHANNEL = 5;
     public ModernRoboticsI2cGyro gyro    = null;
+    public IntegratingGyroscope gyroN;
+    public NavxMicroNavigationSensor navxMicro;
 
-    static final double INCREMENT   = 0.05;     // amount to ramp motor each CYCLE_MS cycle
+    static final double INCREMENT   = 0.15;     // amount to ramp motor each CYCLE_MS cycle
     static final long    CYCLE_MS    =   10;     // period of each cycle
     static final double MAX_FWD     =  1.0;     // Maximum FWD power applied to motor
     static final double MAX_REV     = -1.0;     // Maximum REV power applied to motor
@@ -103,8 +124,8 @@ public class HardwareRelic
     public double CubeLiftArmDownPosition=0.1;
     public double CubeLiftArmUpPosition=1;
 
-    public double cubeSecondOpenPos=0.5;
-    public double cubeSecondClosePos=0.4;
+    public double cubeSecondOpenPos=0.6;
+    public double cubeSecondClosePos=0.38;
 
     HardwareMap hwMap           =  null;
     private ElapsedTime period  = new ElapsedTime();
@@ -166,8 +187,9 @@ public class HardwareRelic
         CubeSlideSwitchR = hwMap.get(TouchSensor.class,"CubeSlideSwitchR");
         CubeLiftSwitch = hwMap.get(TouchSensor.class,"CubeLiftSwitch");
         CubeSecondClaw = hwMap.get(Servo.class, "CubeSecondClaw");
-
-        rangeSensor = hwMap.get(ModernRoboticsI2cRangeSensor.class, "sensor_range");
+        CubeSensorServo=hwMap.get(CRServo.class,"CubeSensorServo");
+        CubeSensorServo.setPower(0);
+        // rangeSensor = hwMap.get(ModernRoboticsI2cRangeSensor.class, "sensor_range");
 
 
 
@@ -198,7 +220,11 @@ public class HardwareRelic
         GemRotater = hwMap.get(Servo.class, "GemRotater");
         cdim = hwMap.deviceInterfaceModule.get("cdim");
         sensorRGB = hwMap.colorSensor.get("sensorRGB");
+        sensor_color=hwMap.colorSensor.get("sensor_color");
         gyro = (ModernRoboticsI2cGyro)hwMap.gyroSensor.get("gyro");
+        navxMicro = hwMap.get(NavxMicroNavigationSensor.class, "navx");
+        gyroN = (IntegratingGyroscope)navxMicro;
+
 
 
 
@@ -250,19 +276,6 @@ public class HardwareRelic
         wheelTwo.setPower(0);
         wheelThree.setPower(0);
         wheelFour.setPower(0);
-        CubeLift1.setPower(0);
-        CubeLift2.setPower(0);
-        CubeTimeBelt.setPower(0);
-
-        RelicExtender.setPower(0);
-        //       CubeLiftArm.setPosition(CubeLiftArmDownPosition);
-
-
-        //       RelClaw.setPosition(0.0);
-        GemRotater.setPosition(GemRotatorInitialPosition);
-        GemExtender.setPower(GemExtenderInitialPosition);
-
-
 
     }
 
@@ -310,6 +323,39 @@ public class HardwareRelic
                 angle = 270;
         }else
             angle = -1;
+
+        return angle;
+    }
+
+    public double getStickAngle(double x, double y){
+        double hypotneus;
+        double angle = 0;
+
+        hypotneus = Math.sqrt(x*x + y*y);
+
+        y = -y;
+        x=-x;
+
+        if (x>0 && y>0){
+            angle = Math.toDegrees(Math.asin(x/hypotneus));
+        } else if (x>0 && y<0){
+            angle = Math.toDegrees(Math.asin(Math.abs(y)/hypotneus)) + 90;
+        } else if (x < 0 && y < 0){
+            angle = -Math.toDegrees(Math.asin(Math.abs(y)/hypotneus)) -90;
+        } else if (x < 0 && y > 0){
+            angle = -Math.toDegrees(Math.asin(Math.abs(x)/hypotneus)) ;
+        } else if (x == 0) {
+            if (y > 0)
+                angle = 0;
+            else if (y < 0)
+                angle = 180;
+        }else if (y == 0) {
+            if (x > 0)
+                angle = 90;
+            else if (x < 0)
+                angle = -90;
+        }else
+            angle = 0;
 
         return angle;
     }
@@ -481,8 +527,167 @@ public class HardwareRelic
         stopRobot();
     }
 
+    public void gyroDriveN(LinearOpMode currentOpMode, double speed, double angle, double distance,double timeLimit,double gyroTarget){
+
+        double targetTicks = (distance) * 1120 / (4 * 3.14);
+
+
+        double pos1 = wheelOne.getCurrentPosition();
+        double pos2 = wheelTwo.getCurrentPosition();
+        double pos3 = wheelThree.getCurrentPosition();
+        double pos4 = wheelFour.getCurrentPosition();
+        double avgpos = 0;
+        double timeStart=currentOpMode.getRuntime();
+        double angleDiff=0;
+        double rotation;
+        angleDrive(currentOpMode,speed,angle,0);
+        while (currentOpMode.opModeIsActive() && avgpos <= targetTicks && (currentOpMode.getRuntime()-timeStart)<timeLimit) {
+            currentOpMode.telemetry.addData("targetTicks", targetTicks);
+            currentOpMode.telemetry.addData("avgpos", avgpos);
+            currentOpMode.telemetry.update();
+            avgpos = Math.abs(wheelOne.getCurrentPosition() - pos1) + Math.abs(wheelTwo.getCurrentPosition() - pos2) + Math.abs(wheelThree.getCurrentPosition() - pos3) + Math.abs(wheelFour.getCurrentPosition() - pos4);
+            avgpos = avgpos / 4;
+            Orientation angles = gyroN.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+
+            angleDiff=gyroTarget-angles.firstAngle;
+            if (angleDiff<180) angleDiff = 360+angleDiff;
+            if (angleDiff>180) angleDiff = angleDiff-360;
+            rotation = -angleDiff / 25;
+            rotation=Range.clip(rotation,-0.2,0.2);
+
+
+            angleDrive(currentOpMode, speed, angle, rotation);
+
+            currentOpMode.telemetry.addData("Heading", gyroTarget);
+            currentOpMode.telemetry.addData("rotation", rotation);
+            currentOpMode.telemetry.addData("Encoders",wheelOne.getCurrentPosition() + "||" +wheelTwo.getCurrentPosition() + "||" + wheelThree.getCurrentPosition() + "||" +wheelFour.getCurrentPosition());
+            currentOpMode.telemetry.addData("wheelPowers",wheelOne.getPower() + "||" +wheelTwo.getPower() + "||" + wheelThree.getPower() + "||" +wheelFour.getPower());
+            currentOpMode.telemetry.addData("wheelStatus",wheelOne.isBusy() + "||" +wheelTwo.isBusy() + "||" + wheelThree.isBusy() + "||" +wheelFour.isBusy());
+
+
+            currentOpMode.idle();
+        }
+        stopRobot();
+    }
+
+
+    public void gyroSensorDrive(LinearOpMode currentOpMode, double speed, double angle, double distance,double colorSensorLimit,double gyroTarget){
+
+        double targetTicks = (distance) * 1120 / (4 * 3.14);
+
+
+        double pos1 = wheelOne.getCurrentPosition();
+        double pos2 = wheelTwo.getCurrentPosition();
+        double pos3 = wheelThree.getCurrentPosition();
+        double pos4 = wheelFour.getCurrentPosition();
+        double avgpos = 0;
+        double timeStart=currentOpMode.getRuntime();
+        double angleDiff=0;
+        double rotation;
+        angleDrive(currentOpMode,speed,angle,0);
+        while (currentOpMode.opModeIsActive() && avgpos <= targetTicks && sensor_color.red()<colorSensorLimit && sensor_color.blue()<colorSensorLimit) {
+            currentOpMode.telemetry.addData("targetTicks", targetTicks);
+            currentOpMode.telemetry.addData("avgpos", avgpos);
+            currentOpMode.telemetry.update();
+            avgpos = Math.abs(wheelOne.getCurrentPosition() - pos1) + Math.abs(wheelTwo.getCurrentPosition() - pos2) + Math.abs(wheelThree.getCurrentPosition() - pos3) + Math.abs(wheelFour.getCurrentPosition() - pos4);
+            avgpos = avgpos / 4;
+            angleDiff=gyroTarget-gyroAngle(gyro.getIntegratedZValue());
+            if (angleDiff<180) angleDiff = 360+angleDiff;
+            if (angleDiff>180) angleDiff = angleDiff-360;
+            rotation = -angleDiff / 25;
+            rotation=Range.clip(rotation,-0.2,0.2);
+
+
+            angleDrive(currentOpMode, speed, angle, rotation);
+
+            currentOpMode.telemetry.addData("Heading", gyroTarget);
+            currentOpMode.telemetry.addData("rotation", rotation);
+            currentOpMode.telemetry.addData("Encoders",wheelOne.getCurrentPosition() + "||" +wheelTwo.getCurrentPosition() + "||" + wheelThree.getCurrentPosition() + "||" +wheelFour.getCurrentPosition());
+            currentOpMode.telemetry.addData("wheelPowers",wheelOne.getPower() + "||" +wheelTwo.getPower() + "||" + wheelThree.getPower() + "||" +wheelFour.getPower());
+            currentOpMode.telemetry.addData("color_sensor",sensor_color.red());
+
+
+            currentOpMode.idle();
+        }
+        stopRobot();
+    }
+    public void gyroSensorDriveN(LinearOpMode currentOpMode, double speed, double angle, double distance,double colorSensorLimit,double gyroTarget){
+
+        double targetTicks = (distance) * 1120 / (4 * 3.14);
+
+
+        double pos1 = wheelOne.getCurrentPosition();
+        double pos2 = wheelTwo.getCurrentPosition();
+        double pos3 = wheelThree.getCurrentPosition();
+        double pos4 = wheelFour.getCurrentPosition();
+        double avgpos = 0;
+        double timeStart=currentOpMode.getRuntime();
+        double angleDiff=0;
+        double rotation;
+        angleDrive(currentOpMode,speed,angle,0);
+        while (currentOpMode.opModeIsActive() && avgpos <= targetTicks && sensor_color.red()<colorSensorLimit && sensor_color.blue()<colorSensorLimit) {
+            currentOpMode.telemetry.addData("targetTicks", targetTicks);
+            currentOpMode.telemetry.addData("avgpos", avgpos);
+            currentOpMode.telemetry.update();
+            avgpos = Math.abs(wheelOne.getCurrentPosition() - pos1) + Math.abs(wheelTwo.getCurrentPosition() - pos2) + Math.abs(wheelThree.getCurrentPosition() - pos3) + Math.abs(wheelFour.getCurrentPosition() - pos4);
+            avgpos = avgpos / 4;
+
+            Orientation angles = gyroN.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+
+            angleDiff=gyroTarget-angles.firstAngle;
+
+            //  angleDiff=gyroTarget-gyroAngle(gyro.getIntegratedZValue());
+            if (angleDiff<180) angleDiff = 360+angleDiff;
+            if (angleDiff>180) angleDiff = angleDiff-360;
+            rotation = -angleDiff / 25;
+            rotation=Range.clip(rotation,-0.2,0.2);
+
+
+            angleDrive(currentOpMode, speed, angle, rotation);
+
+            currentOpMode.telemetry.addData("Heading", gyroTarget);
+            currentOpMode.telemetry.addData("rotation", rotation);
+            currentOpMode.telemetry.addData("Encoders",wheelOne.getCurrentPosition() + "||" +wheelTwo.getCurrentPosition() + "||" + wheelThree.getCurrentPosition() + "||" +wheelFour.getCurrentPosition());
+            currentOpMode.telemetry.addData("wheelPowers",wheelOne.getPower() + "||" +wheelTwo.getPower() + "||" + wheelThree.getPower() + "||" +wheelFour.getPower());
+            currentOpMode.telemetry.addData("color_sensor",sensor_color.red());
+
+
+            currentOpMode.idle();
+        }
+        stopRobot();
+    }
+
+    public void gyroTurnN(LinearOpMode currentOpMode, double rotationSpeed,double targetAngle,boolean counterClock){
+
+        Orientation angles  = gyroN.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+
+        double angleDiff=targetAngle-angles.firstAngle;
+
+
+
+        while (currentOpMode.opModeIsActive() && Math.abs(angleDiff)>3) {
+            angles = gyroN.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+
+            angleDiff=targetAngle-angles.firstAngle;
+
+            //  angleDiff=gyroTarget-gyroAngle(gyro.getIntegratedZValue());
+            if (angleDiff<180) angleDiff = 360+angleDiff;
+            if (angleDiff>180) angleDiff = angleDiff-360;
+            double rotation = -angleDiff / 25;
+            rotation=Range.clip(rotation,-0.4,0.4);
+            angleDrive(currentOpMode, 0, 0, rotation);
+            currentOpMode.telemetry.addData("robotAngle", angles.firstAngle);
+            currentOpMode.telemetry.update();
+            currentOpMode.idle();
+        }
+
+
+        stopRobot();
+    }
 
     public void gyroTurn(LinearOpMode currentOpMode, double rotationSpeed,double targetAngle,boolean counterClock){
+
+
 
         if( counterClock) {
             while (currentOpMode.opModeIsActive() && (gyroAngle(gyro.getIntegratedZValue())) < targetAngle) {
@@ -517,7 +722,7 @@ public class HardwareRelic
 
     }
     public void GemGame(OpMode currentOpMode,boolean redSide){
-        GemExtender.setPower(GemExtenderLastPosition-0.2);
+      /*  GemExtender.setPower(GemExtenderLastPosition-0.2);
         // GemRotater.setPosition(GemRotatorInitialPosition-0.1);
 
         CubeLiftArm.setPosition(CubeLiftArmUpPosition); // lift the cube lift arm to the up position
@@ -527,6 +732,7 @@ public class HardwareRelic
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
+        */
 
         double redFirst1 = (double) sensorRGB.red();
         double blueFirst1 = (double)sensorRGB.blue();
@@ -537,7 +743,7 @@ public class HardwareRelic
         GemExtender.setPower(GemExtenderLastPosition-0.1);
         // CubeSecondClaw.setPosition(cubeSecondOpenPos);
         try {
-            Thread.sleep(1500);
+            Thread.sleep(2000);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
@@ -565,7 +771,7 @@ public class HardwareRelic
         }
         GemExtender.setPower(GemExtenderLastPosition-0.2);
         try {
-            Thread.sleep(1500);
+            Thread.sleep(2000);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
@@ -574,7 +780,7 @@ public class HardwareRelic
 
         GemExtender.setPower(GemExtenderLastPosition);
         try {
-            Thread.sleep(1500);
+            Thread.sleep(2000);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
@@ -606,7 +812,7 @@ public class HardwareRelic
 
         }
         // between the two readings, use the one with larger difference between blue and red
-        else if(Math.abs(ratioDiffFirst-ratioDiffSecond)>1 ){
+        else if(Math.abs(ratioDiffFirst-ratioDiffSecond)>0.5 ){
             if((ratioDiffFirst > ratioDiffSecond) && !(ratioDiffFirst>1 && ratioDiffSecond>1)&& !(ratioDiffFirst<0 && ratioDiffSecond<0)) {
 
                 if(redSide) GemRotater.setPosition(GemRotatorLastPosition+0.1);
@@ -698,6 +904,44 @@ public class HardwareRelic
         stopRobot();
 
     }
+
+    public void ReleaseCubeShort(LinearOpMode currentOpMode){
+        double timeStart;
+
+        CubeSecondClaw.setPosition(cubeSecondOpenPos);
+        CubeClawRight.setPosition(0.7);
+        CubeClawLeft.setPosition(0.3);
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+
+        timeStart=currentOpMode.getRuntime();
+
+
+        while(currentOpMode.opModeIsActive() &&(currentOpMode.getRuntime()-timeStart)<0.5) {
+            angleDrive(currentOpMode, 0.20, 180, 0);
+            currentOpMode.idle();
+
+        }
+        stopRobot();
+        try {
+            Thread.sleep(700);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+        timeStart=currentOpMode.getRuntime();
+        while(currentOpMode.opModeIsActive() &&(currentOpMode.getRuntime()-timeStart)<0.7) {
+            angleDrive(currentOpMode, 0.20, 180, 0);
+            currentOpMode.idle();
+
+        }
+        stopRobot();
+
+
+    }
+
     public void waitForTick(long periodMs) throws InterruptedException {
 
         long  remaining = periodMs - (long)period.milliseconds();
